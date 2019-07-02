@@ -1,0 +1,111 @@
+<?php 
+
+function getFeed($feed_url){
+
+	$stories = array();
+	
+	$xmlDoc = new DOMDocument();
+	$xmlDoc->load($feed_url); 
+	//get and output "<item>" elements
+	
+	$x = $xmlDoc->getElementsByTagName('item');
+
+	$date = date('Y-m-d H:i:s');
+	$four_hours_ago = strtotime($date .' -48 hours'); 
+
+	for ($i=0; $i<=6; $i++) {
+
+		$item_date = $x->item($i)->getElementsByTagName('pubDate')
+		->item(0)->childNodes->item(0)->nodeValue;  
+		$item_date_conv = strtotime($item_date); 
+ 
+		if($item_date_conv > $four_hours_ago){  
+			$item_title = $x->item($i)->getElementsByTagName('title')
+			->item(0)->childNodes->item(0)->nodeValue;
+			array_push($stories, $item_title);
+		}
+	}
+
+	return $stories;
+} 
+
+function getSources(){
+
+	$sources = array(
+		"fox_news" => getFeed("http://feeds.foxnews.com/foxnews/politics","newspaper"),
+		"daily_express_politics" => getFeed("https://feeds.feedburner.com/daily-express-politics?fmt=xml","newspaper"), 
+		"sun_politics" => getFeed("https://www.thesun.co.uk/news/politics/feed/","newspaper"),
+	 	"london_evening_standard" => getFeed("https://www.standard.co.uk/news/rss","newspaper"),
+	 	"the_mirror" => getFeed("https://www.mirror.co.uk/?service=rss","newspaper"),,
+	 	"the_telegraph" => getFeed("https://www.telegraph.co.uk/politics/rss.xml","newspaper"), 
+	 	"sputnik_news" => getFeed("https://sputniknews.com/export/rss2/archive/index.xml","newspaper"));
+
+	return $sources;
+
+}
+
+function getTab($tab_name){
+
+	$words_to_ignore = array("a", "the", "it", "by", "he", "she", "over", "at", "as", "of", "for", "like", "to", "they", "that", "there", "them", "as", "was", "is");
+	$sources = getSources();
+
+	echo "<h3>" . ucfirst($tab_name) . "</h3>";
+
+	if($tab_name == "breaking") {
+
+		/* foreach($sources as $source => $stories) {
+			if(sizeof($stories)>0){
+			    echo "<h3>" . $source . "</h3></br>";
+			    echo print_r($stories);
+			    echo "<hr>";
+			}
+		} */
+
+		$breaking = array();
+		$breaking_words = array();
+
+		foreach($sources["daily_express_politics"] as $story_one) {
+			echo $story_one."<hr>";
+			$words = preg_split('%[\s,]+%', $story_one);
+
+			foreach($sources as $source => $stories) {
+				if(($source != "daily_express_politics") && sizeof($stories)>0){
+				    echo "<h3>" . $source . "</h3></br>"; 
+				    echo "<hr>";
+
+				    foreach($stories as $story_two) {
+
+				    	echo "Title: ".$story_two."</br>";
+
+				    	$count = 0;
+						foreach($words as $word) {
+
+							if (strpos($story_two, $word) !== false && (!in_array($word, $words_to_ignore))) {
+								echo "Present: ".$word."<hr>";
+								$count++;
+							}else{
+								//echo "Absent: ".$word."<hr>";
+							}
+						}
+
+						echo $count."</br>";
+						if($count > 1){
+							array_push($breaking, $story_one);
+							$breaking_words[$story_one] ++;
+						}
+					}
+
+				}
+			}
+
+		}
+
+		echo "<hr>Aggregated<hr>";
+		print_r($breaking_words);
+		echo "<hr>";
+		print_r($breaking);
+
+	}
+}
+ 
+?> 
